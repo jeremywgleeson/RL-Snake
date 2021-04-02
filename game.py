@@ -5,6 +5,7 @@ from collections import deque
 
 # color constants
 BLACK = (0, 0, 0)
+CYAN_GREY = (20,20,20)
 WHITE = (255, 255, 255)
 RED = (200, 0, 0 )
 BLUE = (0, 0, 128)
@@ -34,7 +35,11 @@ class ListDict(object):
             self.item_to_position[last_item] = position
 
     def choose_random_item(self):
-        return random.choice(self.items)
+        # state = random.getstate()
+        # random.seed(1)
+        choice = random.choice(self.items)
+        # random.setstate(state)
+        return choice
 
     def __contains__(self, item):
         return item in self.item_to_position
@@ -48,7 +53,7 @@ class ListDict(object):
 # COLORS = BACK_COLOR, SNAKE_COLOR, EMPTY_COLOR, FOOD_COLOR = ((255,255,255), )
 
 class Graphics:
-    def __init__(self, window_size=None, grid_size=None, margin=1):
+    def __init__(self, window_size=None, grid_size=None, margin=1, edge_margin=2):
         pygame.init()
 
         # set window size
@@ -67,17 +72,89 @@ class Graphics:
         # set margin
         self.margin = margin
 
-        # set square size
-        self.square_size = self.square_width, self.square_height = (self.window_width-self.margin)/(self.grid_width+self.margin), (self.window_height-self.margin)/(self.grid_height+self.margin)
+        self.edge_margin = edge_margin
 
+        # set square size
+        self.square_size = self.square_width, self.square_height = (self.window_width)//(self.grid_width) -self.margin, (self.window_height)//(self.grid_height) -self.margin
 
         self.screen = pygame.display.set_mode(self.window_size)
 
     def gen_rect(self, x, y):
-        return [(self.margin + self.square_width) * x + self.margin,
-                  (self.margin + self.square_height) * y + self.margin,
+        return [(self.margin + self.square_width) * x,
+                  (self.margin + self.square_height) * y,
                   self.square_width,
                   self.square_height]
+
+    def gen_body_rects(self, x, y, type):
+        if type == 0:
+            """
+            -
+            """
+            return [[(self.margin + self.square_width) * x + self.margin,
+                      (self.margin + self.square_height) * y + self.margin+self.edge_margin,
+                      self.square_width,
+                      self.square_height-2*self.edge_margin]]
+        elif type == 1:
+            """
+             |
+            """
+            return [[(self.margin + self.square_width) * x + self.margin+self.edge_margin,
+                      (self.margin + self.square_height) * y + self.margin,
+                      self.square_width-2*self.edge_margin,
+                      self.square_height]]
+        elif type == 2:
+            """
+             |
+            -
+            """
+            return [[(self.margin + self.square_width) * x + self.margin,
+                      (self.margin + self.square_height) * y + self.margin+self.edge_margin,
+                      self.square_width-self.edge_margin,
+                      self.square_height-2*self.edge_margin],
+                    [(self.margin + self.square_width) * x + self.margin+self.edge_margin,
+                      (self.margin + self.square_height) * y + self.margin,
+                      self.square_width-2*self.edge_margin,
+                      self.square_height-self.edge_margin]]
+        elif type == 3:
+            """
+             |
+              _
+            """
+            return [[(self.margin + self.square_width) * x + self.margin +self.edge_margin,
+                      (self.margin + self.square_height) * y + self.margin+self.edge_margin,
+                      self.square_width-self.edge_margin,
+                      self.square_height-2*self.edge_margin],
+                    [(self.margin + self.square_width) * x + self.margin+self.edge_margin,
+                      (self.margin + self.square_height) * y + self.margin,
+                      self.square_width-2*self.edge_margin,
+                      self.square_height-self.edge_margin]]
+        elif type == 4:
+            """
+            -
+             |
+            """
+            return [[(self.margin + self.square_width) * x + self.margin,
+                      (self.margin + self.square_height) * y + self.margin+self.edge_margin,
+                      self.square_width-self.edge_margin,
+                      self.square_height-2*self.edge_margin],
+                    [(self.margin + self.square_width) * x + self.margin+self.edge_margin,
+                      (self.margin + self.square_height) * y + self.margin +self.edge_margin,
+                      self.square_width-2*self.edge_margin,
+                      self.square_height-self.edge_margin]
+                    ]
+        elif type == 5:
+            """
+              _
+             |
+            """
+            return [[(self.margin + self.square_width) * x + self.margin +self.edge_margin,
+                      (self.margin + self.square_height) * y + self.margin+self.edge_margin,
+                      self.square_width-self.edge_margin,
+                      self.square_height-2*self.edge_margin],
+                    [(self.margin + self.square_width) * x + self.margin+self.edge_margin,
+                      (self.margin + self.square_height) * y + self.margin +self.edge_margin,
+                      self.square_width-2*self.edge_margin,
+                      self.square_height-self.edge_margin]]
 
     def draw_square(self, x, y, color):
         if self.screen:
@@ -85,7 +162,18 @@ class Graphics:
 
     def draw_background(self):
         if self.screen:
-            self.screen.fill(WHITE)
+            self.screen.fill(CYAN_GREY)
+
+    def draw_container(self):
+        color = WHITE
+
+        game_width = (self.margin + self.grid_width) * self.square_width
+        game_height = (self.margin + self.grid_height) * self.square_height
+
+        pygame.draw.rect(self.screen, color, [0, 0, game_width, self.margin])
+        pygame.draw.rect(self.screen, color, [0, 0, self.margin, game_height])
+        pygame.draw.rect(self.screen, color, [game_width - self.margin, 0, self.margin, game_height])
+        pygame.draw.rect(self.screen, color, [0, game_height - self.margin, game_width, self.margin])
 
     def draw_game(self, game):
         if self.screen:
@@ -93,17 +181,61 @@ class Graphics:
                 for y in range(0, game.grid.height):
                     type = game.grid.get(x, y)
                     if type == EMPTY:
-                        self.draw_square(x, y, BLACK)
+                        self.draw_square(x, y, CYAN_GREY)
                     elif type == SNAKE_HEAD or type == SNAKE:
                         self.draw_square(x, y, LIGHTGREEN)
                     elif type == FOOD:
-                        self.draw_square(x, y, RED)
+                        self.draw_food(game)
+
+    def draw_grid(self, game):
+        if self.screen:
+            for x in range(0, game.grid.width):
+                for y in range(0, game.grid.height):
+                    self.draw_square(x, y, CYAN_GREY)
+
+    def draw_food(self, game):
+        self.draw_square(game.food_pos[0],game.food_pos[1], RED)
 
     def draw_snake(self, snake_coords):
         if snake_coords:
-            for i in range(0, len(snake_coords)):
-                draw_square(*snake_coords[i])
-                # draw_face(snake_coords[])
+            self.draw_square(*snake_coords[0], LIGHTGREEN)
+            for i in range(1, len(snake_coords)):
+                prev_coord = snake_coords[i-1]
+                curr_coord = snake_coords[i]
+                prev_vec = (curr_coord[0] - prev_coord[0], curr_coord[1] - prev_coord[1])
+
+                rect = self.gen_rect(*curr_coord)
+                """
+                [x,y, width, height]
+                [(self.margin + self.square_width) * x + self.margin,
+                          (self.margin + self.square_height) * y + self.margin,
+                          self.square_width,
+                          self.square_height]
+                """
+
+
+                if prev_vec == (0,1):
+                    "coming from above"
+                    # increase height by margin
+                    rect[3] += self.margin
+                    # move up by margin
+                    rect[1] -= self.margin
+                elif prev_vec == (0,-1):
+                    "coming from below"
+                    # increase height by margin
+                    rect[3] += self.margin
+                elif prev_vec == (1,0):
+                    "coming from left"
+                    # increase width by margin
+                    rect[2] += self.margin
+                    # move left by margin
+                    rect[0] -= self.margin
+                elif prev_vec == (-1,0):
+                    "coming from right"
+                    # increase width by margin
+                    rect[2] += self.margin
+
+                pygame.draw.rect(self.screen, LIGHTGREEN, rect)
 
     def update(self):
         pygame.display.flip()
@@ -147,7 +279,7 @@ class Game:
         self.grid.set_val(0, 0, SNAKE_HEAD)
         self.snake.appendleft((0,0))
 
-        self.add_food()
+        self.food_pos = self.add_food()
 
         self.action_space_n = 4
 
@@ -166,29 +298,38 @@ class Game:
         self.grid.set_val(0, 0, SNAKE_HEAD)
         self.snake.appendleft((0,0))
 
-        self.add_food()
-        return str(self.grid.board)
+        self.food_pos = self.add_food()
+        return str(self.snake) + str(self.food_pos)
 
     def sample_action_space(self):
-        return random.choice([(0,1),(0,-1),(-1,0),(1,0)])
+        # state = random.getstate()
+        # random.seed()
+        choice = random.choice([(0,1),(0,-1),(-1,0),(1,0)])
+        # random.setstate(state)
+        return choice
 
     def draw_game(self):
         if self.graphics:
             self.graphics.draw_background()
-            self.graphics.draw_game(self)
+            # self.graphics.draw_game(self)
+            # self.graphics.draw_grid(self)
+            # self.graphics.draw_container()
+            self.graphics.draw_food(self)
+            self.graphics.draw_snake(self.snake)
             self.graphics.update()
 
     def add_food(self):
         new_pos = self.empty_spaces.choose_random_item()
         self.empty_spaces.remove_item(new_pos)
         self.grid.set_val(*new_pos, FOOD)
+        return new_pos
 
     def move_snake(self, pos_vec):
         # pos_vec is tuple position vector ex: (1,0)
         curr_head = self.snake[0]
         proj_pos = (curr_head[0] + pos_vec[0], curr_head[1] + pos_vec[1])
         if proj_pos == curr_head:
-            return str(self.grid.board), -300, True
+            return  str(self.snake) + str(self.food_pos), -100, True
         if ((proj_pos[0] < self.grid.width) and
                 (proj_pos[0] >= 0) and
                 (proj_pos[1] < self.grid.height) and
@@ -205,10 +346,10 @@ class Game:
                 if proj_val == FOOD:
                     self.score += 1
                     if len(self.empty_spaces) == 0:
-                        return str(self.grid.board), 500, True
+                        return  str(self.snake) + str(self.food_pos), 500, True
                     else:
-                        self.add_food()
-                        return str(self.grid.board), 100, False
+                        self.food_pos = self.add_food()
+                        return  str(self.snake) + str(self.food_pos), 100, False
                 else:
                     # remove last element
                     last_pos = self.snake.pop()
@@ -218,15 +359,15 @@ class Game:
                         self.grid.set_val(*last_pos, EMPTY)
             else:
                 # game over :(
-                return str(self.grid.board), -300, True
+                return str(self.snake) + str(self.food_pos), -100, True
         else:
             # game over :(
-            return str(self.grid.board), -300, True
-        return str(self.grid.board), -1, False
+            return  str(self.snake) + str(self.food_pos), -100, True
+        return  str(self.snake) + str(self.food_pos), -1, False
 
 
 def main():
-    g = Game(size=(3,3),graphics=True)
+    g = Game(size=(5,5),graphics=True)
     g.draw_game()
 
     next_move = (1,0)

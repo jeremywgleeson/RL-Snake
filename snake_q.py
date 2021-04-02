@@ -33,14 +33,14 @@ EXPORT = True
 max_steps_per_ep = 300
 
 def train(q_table, EXPORT):
-    num_ep = 100000
+    num_ep = 1000000
     learning_rate = 0.1
     discount_rate = .99
 
     exploration_rate = 1
     max_exploration_rate = 1
     min_exploration_rate = 0.01
-    exploration_decay_rate = np.log(0.01)/(-num_ep)
+    exploration_decay_rate = 0.000005#np.log(0.01)/(-num_ep)
 
     rewards_all_episodes = []
     print("0.00%", end="")
@@ -125,11 +125,13 @@ def simulate(q_table):
         print("*****EPISODE ", episode+1, "*****\n\n\n\n")
         time.sleep(1)
 
+        out = False
+
         for step in range(max_steps_per_ep):
             if state not in q_table:
                 q_table[state] = {}
             g.draw_game()
-            time.sleep(0.1)
+            time.sleep(0.3)
 
 
             action = None
@@ -151,27 +153,32 @@ def simulate(q_table):
             g.draw_game()
 
             if done:
-                if reward>1:
+                if reward>0:
                     print("****Completed!****")
                     time.sleep(3)
                 else:
                     print("****Died!****")
                     time.sleep(3)
+                out = True
                 break
             state = new_state
+        if not out:
+            print("****Ran out of moves!****")
+            time.sleep(3)
+
 
 def main():
     q_table = {}
     if len(sys.argv) > 1:
-        if sys.argv[1] == "train":
-            train(q_table, EXPORT)
-        elif sys.argv[1] == "sim":
+        if IMPORT:
             try:
                 with open('q_table.json', 'r') as fp:
                     q_table = json.load(fp)
                 print(len(q_table), "state entries loaded!")
             except:
                 pass
+        if sys.argv[1] == "train":
+            train(q_table, EXPORT)
         simulate(q_table)
 
 main()
