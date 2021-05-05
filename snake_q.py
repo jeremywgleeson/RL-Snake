@@ -2,15 +2,15 @@ import numpy as np
 import gym
 import random
 import time
-import game
+import snake_game
 import json
 from ast import literal_eval
 import sys
 
-size = (5,5)
+size = (3,3)
 
 # env = gym.make("FrozenLake-v0")
-g = game.Game(size=size,graphics=True)
+g = snake_game.Game(size=size,graphics=True)
 # action_space_size = env.action_space.n
 # state_space_size = env.observation_space.n
 
