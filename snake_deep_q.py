@@ -9,17 +9,18 @@ import numpy as np
 import snake_game
 import time
 import threading
-from itertools import count
 
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython: from IPython import display
-
+is_ipython = "inline" in matplotlib.get_backend()
+if is_ipython:
+    from IPython import display
 
 
 class Replay:
-    def __init__(self, size=(20,20)):
+    def __init__(self, size=(20, 20)):
         self.emu = SnakeEventManager(device, graphics=True)
-        self.network = DQN(input_dims, 64, 64, 64, self.emu.num_actions_available()).to(device)
+        self.network = DQN(input_dims, 64, 64, 64, self.emu.num_actions_available()).to(
+            device
+        )
         self.info_lock = threading.Lock()
         self.running = threading.Event()
         self.modified = threading.Event()
@@ -29,7 +30,6 @@ class Replay:
         # self.actions = ["D", "U", "R", "L"]
         self.actions = ["\u2193", "\u2191", "\u2192", "\u2190"]
         # self.actions = [u"\U0001F847", u"\U0001F845", u"\U0001F846", u"\U0001F844"]
-
 
         self.thread.start()
 
@@ -45,7 +45,11 @@ class Replay:
             steps_since_food = 0
 
             self.emu.reset()
-            self.emu.render("Score: {:3} Ep# {:5} Steps: {:5}".format(self.emu.env.score, self.episode_num, steps))
+            self.emu.render(
+                "Score: {:3} Ep# {:5} Steps: {:5}".format(
+                    self.emu.env.score, self.episode_num, steps
+                )
+            )
 
             time.sleep(0.1)
             while not done:
@@ -63,7 +67,14 @@ class Replay:
                             actions = self.network(state)
                             action = T.argmax(actions).item()
                         next_state, reward, done = self.emu.take_action(action)
-                        self.emu.render("Score: {:3} Ep# {:5} Steps: {:5} {}".format(self.emu.env.score, self.episode_num, steps, self.actions[action]))
+                        self.emu.render(
+                            "Score: {:3} Ep# {:5} Steps: {:5} {}".format(
+                                self.emu.env.score,
+                                self.episode_num,
+                                steps,
+                                self.actions[action],
+                            )
+                        )
                         if reward > 0:
                             steps_since_food = 0
 
@@ -113,7 +124,8 @@ class DQN(nn.Module):
         t = self.out(t)
         return t
 
-class Agent():
+
+class Agent:
     def __init__(self, strategy, num_actions, device):
         self.strategy = strategy
         self.num_actions = num_actions
@@ -133,7 +145,8 @@ class Agent():
         return action
         # return T.tensor([action]).to(self.device)
 
-class ReplayMemory():
+
+class ReplayMemory:
     def __init__(self, capacity, input_dims, device):
         self.capacity = capacity
 
@@ -148,7 +161,9 @@ class ReplayMemory():
         self.mem_count = 0
 
     def push(self, state, action, reward, new_state, done):
-        index = self.mem_count%self.capacity
+        """push new memory"""
+        
+        index = self.mem_count % self.capacity
         self.state_memory[index] = state
         self.action_memory[index] = action
         self.reward_memory[index] = reward
@@ -157,10 +172,12 @@ class ReplayMemory():
 
         self.mem_count += 1
 
-
-    # returns (state_batch, new_state_batch, reward_batch, terminal_batch, action_batch)
-    # all of type tensor EXCEPT action_batch of type np.array
     def sample(self, batch_size):
+        """
+        returns tuple of tensors representing sample of memory
+        returns (state_batch, new_state_batch, reward_batch, terminal_batch, action_batch)
+        all of type tensor EXCEPT action_batch of type np.array
+        """
         batch = np.random.choice(self.capacity, batch_size, replace=False)
 
         state_batch = T.tensor(self.state_memory[batch]).to(self.device)
@@ -174,45 +191,67 @@ class ReplayMemory():
     def can_provide_sample(self, batch_size):
         return self.mem_count >= batch_size
 
-class EpsilonGreedyStrategy():
+
+class EpsilonGreedyStrategy:
     def __init__(self, start, end, decay):
         self.start = start
         self.end = end
         self.decay = decay
 
     def get_exploration_rate(self, current_step):
-        return self.end + (self.start - self.end) * \
-            np.exp(-1. * current_step * self.decay)
+        return self.end + (self.start - self.end) * np.exp(
+            -1.0 * current_step * self.decay
+        )
 
-class SnakeEventManager():
-    def __init__(self, device, size = (20,20), graphics=False):
+
+class SnakeEventManager:
+    """
+    Manage communication between the snake game and training sim
+    """
+
+    def __init__(self, device, size=(20, 20), graphics=False):
+        """Initilize new game"""
+
         self.device = device
-        self.env = snake_game.Game(size=size,graphics=graphics)
+        self.env = snake_game.Game(size=size, graphics=graphics)
         self.done = False
-        self.actions_list = [(0,1), (0,-1), (1,0), (-1,0)]
+        self.actions_list = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
     def reset(self):
+        """Reset game"""
+
         self.env.reset()
 
     def render(self, text):
+        """Render game on screen"""
+
         return self.env.draw_game(text)
 
     def num_actions_available(self):
+        """Get action space of game"""
+
         return self.env.action_space_n
 
     def take_action(self, action):
+        """Move snake and return new training params"""
+
         next_state, reward, done = self.env.move_snake(self.actions_list[action])
         self.done = done
         return next_state, reward, done
 
     def get_state(self):
+        """Get the state of the game to feed into net"""
+
         return self.env.get_state_adv()
 
-class QValues():
+
+class QValues:
+
     device = T.device("cuda" if T.cuda.is_available() else "cpu")
 
     @staticmethod
     def get_current(policy_net, states, actions, batch_index):
+        """"""
         results = policy_net(states)
         return results[batch_index, actions]
         # return results.gather(dim=0, index=actions.unsqueeze(-1))
@@ -233,27 +272,39 @@ class QValues():
         # return values
         # return target_net(next_states).max(dim=1)[0].detach()
 
+
 def plot(values, moving_avg_period):
     plt.figure(2)
     plt.clf()
-    plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
+    plt.title("Training...")
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
     plt.plot(values)
 
     moving_avg = get_moving_average(moving_avg_period, values)
     plt.plot(moving_avg)
     plt.pause(0.001)
-    print("Episode", len(values), "\n", \
-        moving_avg_period, "episode moving avg:", moving_avg[-1])
-    if is_ipython: display.clear_output(wait=True)
+    print(
+        "Episode",
+        len(values),
+        "\n",
+        moving_avg_period,
+        "episode moving avg:",
+        moving_avg[-1],
+    )
+    if is_ipython:
+        display.clear_output(wait=True)
+
 
 def get_moving_average(period, values):
     values = T.tensor(values, dtype=T.float)
     if len(values) >= period:
-        moving_avg = values.unfold(dimension=0, size=period, step=1) \
-            .mean(dim=1).flatten(start_dim=0)
-        moving_avg = T.cat((T.zeros(period-1), moving_avg))
+        moving_avg = (
+            values.unfold(dimension=0, size=period, step=1)
+            .mean(dim=1)
+            .flatten(start_dim=0)
+        )
+        moving_avg = T.cat((T.zeros(period - 1), moving_avg))
         return moving_avg.numpy()
     else:
         moving_avg = T.zeros(len(values))
@@ -297,6 +348,7 @@ if __name__ == "__main__":
     for episode in range(num_episodes):
         if episode % update_replay_every == 0:
             replay.update_data(policy_net.state_dict(), episode)
+            T.save(policy_net.state_dict(), "network" + str(episode))
 
         tot_reward = 0
         em.reset()
@@ -319,10 +371,15 @@ if __name__ == "__main__":
                 step = 0
             # actually train here?
             if memory.can_provide_sample(batch_size):
-                states, new_states, rewards, terminals, actions = memory.sample(batch_size)
+                states, new_states, rewards, terminals, actions = memory.sample(
+                    batch_size
+                )
                 batch_index = np.arange(batch_size, dtype=np.int32)
 
-                current_q_values = QValues.get_current(policy_net, states, actions, batch_index)
+                # type
+                current_q_values = QValues.get_current(
+                    policy_net, states, actions, batch_index
+                )
                 next_q_values = QValues.get_next(target_net, new_states, terminals)
 
                 target_q_values = (next_q_values * gamma) + rewards
@@ -335,7 +392,12 @@ if __name__ == "__main__":
                 break
 
         episode_rewards.append(tot_reward)
-        print("reward:",tot_reward, "\tepsilon:", agent.strategy.get_exploration_rate(episode))
+        print(
+            "reward:",
+            tot_reward,
+            "\tepsilon:",
+            agent.strategy.get_exploration_rate(episode),
+        )
         plot(episode_rewards, 100)
         if episode % target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
